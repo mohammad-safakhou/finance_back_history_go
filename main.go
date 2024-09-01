@@ -36,39 +36,90 @@ func main() {
 		return
 	}
 
-	capital := 1000000.
+	capital := 100000.
+	initialCapital := capital
+	percents := []float64{}
 	for _, f := range files {
+		if f.Name()[0:6] != "DAT_MT" {
+			continue
+		}
 		file, err := os.Open(dir + f.Name())
 		if err != nil {
 			fmt.Println("Error opening file:", err)
 			return
 		}
 		candles := Candles(file)
+		//if candles[0].Time.Year() != 2023 {
+		//	continue
+		//}
 
-		a := capital
+		//candles30 := convertTo30MinuteCandles(candles)
+
 		tradeCounts := 0
-		capital, tradeCounts = core.StrategyV1(capital, candles)
-		fmt.Printf("Year %s Trade Counts: %d Exit Capital: %f (%f)\n", f.Name(), tradeCounts, capital, (capital*100/a)-100)
-		file.Close()
-	}
-
-	fmt.Println("\n\n------------------------------\n")
-
-	capital = 1000000.
-	for _, f := range files {
-		file, err := os.Open(dir + f.Name())
-		if err != nil {
-			fmt.Println("Error opening file:", err)
-			return
+		strategy := core.CandleCount{
+			NumRedCandle:      1,
+			NumGreenCandle:    1,
+			StopLossPips:      80,
+			TakeProfitPips:    2000,
+			StopLossPercent:   .01,
+			TakeProfitPercent: .30,
+			TimeFrame:         30,
+			Leverage:          20,
 		}
-		candles := Candles(file)
-
-		a := capital
-		tradeCounts := 0
-		capital, tradeCounts = core.StrategyV2(capital, candles)
-		fmt.Printf("Year %s Trade Counts: %d Exit Capital: %f (%f)\n", f.Name(), tradeCounts, capital, (capital*100/a)-100)
+		capital, tradeCounts = strategy.StrategyCandleCount(initialCapital, candles)
+		percent := (float64(capital) * 100 / initialCapital) - 100
+		fmt.Printf("Year %s Trade Counts: %d Exit Capital: %f (%f)\n", f.Name(), tradeCounts, capital, percent)
+		percents = append(percents, percent)
 		file.Close()
 	}
+
+	total := 0.
+	for _, percent := range percents {
+		fmt.Println(percent)
+		total += percent
+	}
+
+	fmt.Println(total)
+
+	//capital := 1000000.
+	//for _, f := range files {
+	//	file, err := os.Open(dir + f.Name())
+	//	if err != nil {
+	//		fmt.Println("Error opening file:", err)
+	//		return
+	//	}
+	//	candles := Candles(file)
+	//	if candles[0].Time.Year() != 2023 {
+	//		continue
+	//	}
+	//
+	//	//candles30 := convertTo30MinuteCandles(candles)
+	//
+	//	a := capital
+	//	tradeCounts := 0
+	//	capital, tradeCounts = core.StrategyV1(capital, candles)
+	//	fmt.Printf("Year %s Trade Counts: %d Exit Capital: %f (%f)\n", f.Name(), tradeCounts, capital, (capital*100/a)-100)
+	//	file.Close()
+	//}
+	//
+	//fmt.Println("\n\n------------------------------\n")
+	//
+	//capital = 1000000.
+	//for _, f := range files {
+	//	file, err := os.Open(dir + f.Name())
+	//	if err != nil {
+	//		fmt.Println("Error opening file:", err)
+	//		return
+	//	}
+	//	candles := Candles(file)
+	//	candles30 := utils.ConvertTo30MinuteCandles(candles)
+	//
+	//	a := capital
+	//	tradeCounts := 0
+	//	capital, tradeCounts = core.StrategyV2(capital, candles30)
+	//	fmt.Printf("Year %s Trade Counts: %d Exit Capital: %f (%f)\n", f.Name(), tradeCounts, capital, (capital*100/a)-100)
+	//	file.Close()
+	//}
 }
 
 func Candles(file *os.File) []models.Candle {
@@ -101,38 +152,38 @@ func parseRecord(record []string) (models.Candle, error) {
 	}
 
 	// Parse DateTime
-	dateTimeStr := record[0] + " " + strings.Split(record[1], ">")[0]
+	dateTimeStr := record[0] + " " + strings.Split(strings.ReplaceAll(record[1], " ", ""), ">")[0]
 	dateTime, err := time.Parse("2006.01.02 15:04", dateTimeStr)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing DateTime: %v", err)
 	}
 
 	// Parse Open
-	open, err := strconv.ParseFloat(record[2], 64)
+	open, err := strconv.ParseFloat(strings.ReplaceAll(record[2], " ", ""), 64)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing Open: %v", err)
 	}
 
 	// Parse High
-	high, err := strconv.ParseFloat(record[3], 64)
+	high, err := strconv.ParseFloat(strings.ReplaceAll(record[3], " ", ""), 64)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing High: %v", err)
 	}
 
 	// Parse Low
-	low, err := strconv.ParseFloat(record[4], 64)
+	low, err := strconv.ParseFloat(strings.ReplaceAll(record[4], " ", ""), 64)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing Low: %v", err)
 	}
 
 	// Parse Close
-	close, err := strconv.ParseFloat(record[5], 64)
+	close, err := strconv.ParseFloat(strings.ReplaceAll(record[5], " ", ""), 64)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing Close: %v", err)
 	}
 
 	// Parse Volume
-	volume, err := strconv.ParseFloat(record[6], 64)
+	volume, err := strconv.ParseFloat(strings.ReplaceAll(record[6], " ", ""), 64)
 	if err != nil {
 		return models.Candle{}, fmt.Errorf("error parsing Volume: %v", err)
 	}
